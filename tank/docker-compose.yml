@@ -1,0 +1,89 @@
+services:
+  tank-gui:
+    env_file: ../system.env
+    container_name: tank-gui-app
+    image: ${IMAGE_GUI_NAME}:${IMAGE_GUI_TAG}
+    privileged: true
+    volumes:
+      - /tmp/.Xauthority:/root/.Xauthority:rw
+    environment:
+      - "DISPLAY=192.168.50.167:0"
+    build:
+      context: .
+      shm_size: '11gb'
+      dockerfile: ./tank_gui.Dockerfile
+    ports:
+      - "7654:7654"
+    extra_hosts:
+      - localhost:192.168.1.202
+    networks:
+      - tank_network
+  tank-server:
+    env_file: ../system.env
+    container_name: tank-server-app
+    image: ${IMAGE_SERVER_NAME}:${IMAGE_SERVER_TAG}
+    build:
+      context: .
+      shm_size: '11gb'
+      dockerfile: ./tank_server.Dockerfile
+    ports:
+      - "7654:7654"
+    extra_hosts:
+      - localhost:192.168.1.202
+    networks:
+      - tank_network
+  tank-controller:
+    env_file: ../system.env
+    container_name: tank-controller-app
+    image: ${IMAGE_NAME}:${IMAGE_TAG}
+    command: --action=controller
+    build:
+      context: .
+      shm_size: '11gb'
+      dockerfile: ./tank.Dockerfile
+    networks:
+      - tank_network
+  tank-ai-bot:
+    env_file: ../system.env
+    container_name: tank-ai-bot-app
+    image: ${IMAGE_NAME}:${IMAGE_TAG}
+    command: --action=train
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [ gpu ]
+    build:
+      context: .
+      shm_size: '11gb'
+      dockerfile: ./tank.Dockerfile
+    networks:
+      - tank_network
+    depends_on:
+      - tank-controller
+  tank-opponent-bot:
+    env_file: ../system.env
+    container_name: tank-opponent-bot-app
+    image: ${IMAGE_NAME}:${IMAGE_TAG}
+    command: --action=train
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [ gpu ]
+    build:
+      context: .
+      shm_size: '11gb'
+      dockerfile: ./tank.Dockerfile
+    networks:
+      - tank_network
+    depends_on:
+      - tank-controller
+networks:
+  tank_network:
+    driver: bridge
+    name: tank_network
